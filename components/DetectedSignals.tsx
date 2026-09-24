@@ -1,0 +1,3 @@
+import { Check, TriangleAlert } from 'lucide-react';
+import type { FraudSignal } from '@/lib/types';
+export default function DetectedSignals({signals}:{signals:FraudSignal[]}){return <section className="signals"><div className="panel-heading"><span>ОБНАРУЖЕННЫЕ ПРИЗНАКИ</span><span className="count">{signals.length}</span></div>{signals.length?signals.map(s=><div className={`signal ${s.severity}`} key={s.type}><TriangleAlert size={16}/><div><strong>{s.label}</strong><p>«{s.evidence}»</p></div></div>):<div className="no-signals"><Check size={19}/><p>Опасные признаки пока<br/>не обнаружены</p></div>}</section>;}

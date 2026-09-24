@@ -1,0 +1,16 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { analyzeFraud } from '../lib/fraud-engine';
+import { combineAnalysis } from '../lib/hybrid-score';
+import { scamDemo, safeDemo } from '../lib/demo-data';
+test('bank and SMS request is critical',()=>assert.ok(analyzeFraud('Здравствуйте, это служба безопасности банка. Назовите код из SMS.').riskScore>=90));
+test('safe account money transfer is critical',()=>assert.ok(analyzeFraud('Переведите деньги на безопасный счет.').riskScore>=95));
+test('legitimate safety advice remains low',()=>assert.ok(analyzeFraud('Здравствуйте, это банк. Мы никогда не запрашиваем SMS-коды. Используйте только официальное приложение.').riskScore<30));
+test('safe demo remains low at every step',()=>safeDemo.forEach((_,i)=>assert.ok(analyzeFraud(safeDemo.slice(0,i+1).join('\n')).riskScore<30)));
+test('scam demo increases naturally and reaches critical',()=>{const scores=scamDemo.map((_,i)=>analyzeFraud(scamDemo.slice(0,i+1).join('\n')).riskScore);assert.ok(scores.every((n,i)=>i===0||n>=scores[i-1]));assert.ok(scores.at(-1)!>=95);assert.ok(new Set(scores).size>=5);console.log('Demo scores:',scores.join(' → '));});
+test('repeated signal does not inflate score',()=>assert.equal(analyzeFraud('Назовите код. '.repeat(10)).riskScore,analyzeFraud('Назовите код.').riskScore));
+test('bare bank terminology is not suspicious',()=>assert.equal(analyzeFraud('Я иду в банк. У меня карта и счёт.').riskScore,0));
+test('Kazakh critical combination',()=>assert.ok(analyzeFraud('Банктің қауіпсіздік қызметі. SMS кодын айтыңыз.').riskScore>=90));
+test('negative advice is not an instruction',()=>assert.equal(analyzeFraud('Не переводите деньги на безопасный счет. Не устанавливайте AnyDesk. Не сообщите номер карты.').riskScore,0));
+test('safe context does not suppress a later demand',()=>assert.ok(analyzeFraud('Мы не запрашиваем SMS-коды. Это служба безопасности банка. Назовите код.').riskScore>=90));
+test('critical local floor survives low AI score',()=>{const local=analyzeFraud('Служба безопасности банка. Назовите код.');assert.ok(combineAnalysis(local,analyzeFraud('')).riskScore>=90);});
